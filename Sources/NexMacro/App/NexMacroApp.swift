@@ -35,12 +35,20 @@ struct NexMacroApp: App {
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
+    static var shared: AppDelegate?
     var settingsWindow: NSWindow?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        AppDelegate.shared = self
+    }
+
     func openSettings() {
+        // Activate app first
+        NSApp.activate(ignoringOtherApps: true)
+
         if let window = settingsWindow, window.isVisible {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            window.orderFrontRegardless()
+            window.makeKey()
             return
         }
 
@@ -49,7 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 550),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -57,10 +65,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = NSHostingView(rootView: settingsView)
         window.center()
         window.isReleasedWhenClosed = false
+        window.level = .floating  // Ensure it appears above other windows initially
 
         self.settingsWindow = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        window.orderFrontRegardless()
+        window.makeKey()
+
+        // Reset level after a moment so it behaves normally
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            window.level = .normal
+        }
     }
 }
 
@@ -97,7 +111,7 @@ struct MenuBarLabel: View {
 
 struct MenuBarView: View {
     @Environment(DeviceManager.self) private var deviceManager
-    @State private var debugExpanded = true
+    @State private var debugExpanded = false
 
     var body: some View {
         ScrollView {
@@ -125,7 +139,7 @@ struct MenuBarView: View {
             }
             .padding(12)
         }
-        .frame(width: 320, height: 620)
+        .frame(width: 320, height: debugExpanded ? 720 : 340)
     }
 
     // MARK: - Sections
@@ -164,7 +178,7 @@ struct MenuBarView: View {
     private var debugSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Debug")
+                Text("Details")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -235,9 +249,7 @@ struct MenuBarView: View {
 
             HStack {
                 Button("Settings...") {
-                    if let appDelegate = NSApp.delegate as? AppDelegate {
-                        appDelegate.openSettings()
-                    }
+                    AppDelegate.shared?.openSettings()
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
