@@ -1,8 +1,11 @@
 import SwiftUI
+import AppKit
 
 /// NexMacro - macOS Menu Bar App for Macro Keypad Configuration
 @main
 struct NexMacroApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     init() {
         // Start stats collection and device connection on app launch
         Task { @MainActor in
@@ -25,12 +28,39 @@ struct NexMacroApp: App {
                 .environment(DeviceManager.shared)
         }
         .menuBarExtraStyle(.window)
+    }
+}
 
-        // Settings window (optional, can be opened from menu)
-        Settings {
-            SettingsView()
-                .environment(DeviceManager.shared)
+// MARK: - App Delegate for Settings Window
+
+@MainActor
+class AppDelegate: NSObject, NSApplicationDelegate {
+    var settingsWindow: NSWindow?
+
+    func openSettings() {
+        if let window = settingsWindow, window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
         }
+
+        let settingsView = SettingsView()
+            .environment(DeviceManager.shared)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 550),
+            styleMask: [.titled, .closable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "NexMacro Settings"
+        window.contentView = NSHostingView(rootView: settingsView)
+        window.center()
+        window.isReleasedWhenClosed = false
+
+        self.settingsWindow = window
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
@@ -204,15 +234,13 @@ struct MenuBarView: View {
             .disabled(!deviceManager.isReady)
 
             HStack {
-                SettingsLink {
-                    Text("Settings...")
+                Button("Settings...") {
+                    if let appDelegate = NSApp.delegate as? AppDelegate {
+                        appDelegate.openSettings()
+                    }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
-                .onHover { _ in
-                    // Pre-activate when hovering to help with window focus
-                    NSApplication.shared.activate(ignoringOtherApps: true)
-                }
 
                 Spacer()
 

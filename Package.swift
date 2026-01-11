@@ -53,6 +53,12 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI")
             ]
+        ),
+        // Test target
+        .testTarget(
+            name: "NexMacroTests",
+            dependencies: [],
+            path: "Tests/NexMacroTests"
         )
     ]
 )
