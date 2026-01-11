@@ -1,0 +1,4 @@
+module CPcStats {
+    header "pcstats.h"
+    export *
+}
