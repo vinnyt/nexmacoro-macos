@@ -1,114 +1,71 @@
 # NexMacro macOS - Implementation Plan
 
-## Current State (Completed)
-- [x] Hardware monitoring & stats transmission
-- [x] Device auto-connect & authentication
-- [x] Basic menu bar UI with stats display
-- [x] Auto-start on app launch
-- [x] Timezone-adjusted timestamps
+## Current State (v1.0.0-rc)
+
+### Core Features - COMPLETE
+- [x] Hardware monitoring & stats transmission (CPU, GPU, RAM, disk, network)
+- [x] Device auto-connect & authentication via USB serial
+- [x] Menu bar UI with live stats display
+- [x] Profile switching from menu bar (profiles 1-5)
+- [x] Settings window with proper focus handling (AppDelegate approach)
+- [x] CI/CD with GitHub Actions (build + 37 tests)
+
+### Macro System - COMPLETE
+- [x] All 13 action types implemented:
+  - [x] Keyboard Shortcut (Cmd+C, Ctrl+Shift+N, etc.)
+  - [x] Type Text (with optional Enter)
+  - [x] Media Control (play/pause, volume, track controls)
+  - [x] Launch Application (by path or bundle ID)
+  - [x] Open Website (URL in default browser)
+  - [x] Open Folder (in Finder)
+  - [x] Run Command (shell commands)
+  - [x] Mouse Click (left, right, double)
+  - [x] Mouse Move (X,Y with optional drag)
+  - [x] Function Keys (F1-F15, special keys)
+  - [x] Delay (milliseconds)
+  - [x] Change Profile (1-5)
+  - [x] System Controls (calculator, browser controls, search)
+- [x] ActionExecutor service with CGEvent simulation
+- [x] Key press handler wired up in DeviceManager
+
+### Configuration - COMPLETE
+- [x] Profile model (5 profiles, 8 keys each)
+- [x] KeyConfig model (actions array, alias, HID mode)
+- [x] JSON persistence in ~/Library/Application Support/NexMacro/
+- [x] Per-device configuration storage
+- [x] Profile sync to device
+
+### Configuration UI - COMPLETE
+- [x] Keys tab - 8-key visual layout matching device
+- [x] Click key to edit with action list
+- [x] Action type picker with parameter editors
+- [x] Add/remove actions per key
+- [x] Profile selector tabs
+- [x] RGB tab - Color picker + 9 lighting modes
+- [x] General tab - Update interval, launch at login, dynamic profiles
+- [x] Device tab - Device info, reconnect, reset options
+
+### Dynamic Profile Switching - COMPLETE
+- [x] NSWorkspace frontmost app monitoring
+- [x] App-to-profile mapping configuration
+- [x] Auto-switch on app focus change
+- [x] Default profile fallback
 
 ---
 
-## Phase 1: Core Macro Functionality
+## Remaining for v1.0.0
 
-**Goal**: Make device keys execute actions when pressed
+### High Priority
+- [ ] **App Icon** - Design and add proper app icon (currently uses default)
+- [ ] **Verify RGB Mode** - Test all 9 lighting modes with physical device
 
-### 1.1 Action System Architecture
-- [ ] Define `KeyAction` enum/protocol for all 13 action types
-- [ ] Create `ActionExecutor` service to run actions
-- [ ] Wire up key press handler in `DeviceManager` (stub exists at line 209)
-
-### 1.2 Basic Action Types
-- [ ] **Keyboard Shortcut** - Send key combinations (Cmd+C, Cmd+V, etc.)
-- [ ] **Text Input** - Type text strings with optional Enter
-- [ ] **Media Keys** - Play/pause, volume up/down, next/prev track
-- [ ] **Delay** - Wait milliseconds between actions
-
-### 1.3 Advanced Action Types
-- [ ] **Launch Application** - Open apps by path or bundle ID
-- [ ] **Open URL** - Launch default browser with URL
-- [ ] **Open Folder** - Open Finder at path
-- [ ] **Run Command** - Execute shell commands
-- [ ] **Mouse Click** - Left, right, double click
-- [ ] **Mouse Move** - Move cursor to X,Y coordinates
-- [ ] **Function Keys** - F1-F12, arrows, Home/End, Page Up/Down
-- [ ] **Change Profile** - Switch to profile 1-5
-- [ ] **Browser Control** - Back, forward, refresh, bookmarks
+### Nice to Have
+- [ ] **About Window** - Version info, links, credits
+- [ ] **Import/Export** - Backup/restore configurations to JSON file
 
 ---
 
-## Phase 2: Configuration & Persistence
-
-**Goal**: Save and load key configurations
-
-### 2.1 Data Models
-- [ ] `Profile` model (id, name, keys[8])
-- [ ] `KeyConfig` model (keyId, actions[], alias, icon)
-- [ ] `AppSettings` model (all user preferences)
-
-### 2.2 Storage Layer
-- [ ] JSON config in `~/Library/Application Support/NexMacro/`
-- [ ] Per-device directories: `configs/{deviceId}/`
-- [ ] File format: `profile_{n}_key_{m}.json`
-- [ ] Settings persistence
-
-### 2.3 Profile Management
-- [ ] Support 5 profiles per device
-- [ ] Track active profile
-- [ ] Sync profile changes to device
-
----
-
-## Phase 3: Configuration UI
-
-**Goal**: Visual key configuration
-
-### 3.1 Key Configuration View
-- [ ] 8-key visual layout matching physical device
-- [ ] Click key to select and edit
-- [ ] Action list with add/remove/reorder
-- [ ] Action type picker dropdown
-- [ ] Parameter editors per action type
-- [ ] Alias/name field for each key
-
-### 3.2 Profile Management UI
-- [ ] Profile tabs or selector
-- [ ] Rename profile
-- [ ] Copy profile
-- [ ] Reset to defaults
-
-### 3.3 RGB Control UI
-- [ ] Native SwiftUI color picker
-- [ ] RGB mode dropdown (static, breathing, rainbow, etc.)
-- [ ] Live preview - send to device on change
-- [ ] Persist RGB settings
-
----
-
-## Phase 4: Enhanced Features
-
-**Goal**: Feature parity with Windows app
-
-### 4.1 Dynamic Profile Switching
-- [ ] Monitor frontmost application via NSWorkspace
-- [ ] App-to-profile mapping configuration
-- [ ] Auto-switch when app focus changes
-- [ ] Default profile fallback
-
-### 4.2 Import/Export
-- [ ] Export all configs to JSON file
-- [ ] Import configs from file
-- [ ] Backup/restore functionality
-
-### 4.3 System Integration
-- [ ] Login item (launch at startup)
-- [ ] Proper app icon and branding
-- [ ] About window with version info
-- [ ] Menu bar icon options
-
----
-
-## Technical Notes
+## Technical Architecture
 
 ### Key Press Flow
 ```
@@ -119,31 +76,48 @@ Device sends: "ebf.k.{profileId}.{keyId}"
   → ActionExecutor.execute(actions for key)
 ```
 
-### macOS APIs Needed
-- **CGEvent** - Keyboard/mouse simulation
-- **NSWorkspace** - Launch apps, open URLs, monitor active app
-- **NSAppleScript** - System commands (optional)
-- **ServiceManagement** - Login items
+### Project Structure
+```
+Sources/
+├── CPcStats/           # C code for IOKit hardware monitoring
+├── NexMacro/
+│   ├── App/            # NexMacroApp.swift, AppDelegate
+│   ├── Models/         # Device, KeyAction, NexProtocol, PcStats
+│   ├── Services/       # DeviceManager, SerialPortService,
+│   │                   # ActionExecutor, HardwareMonitor
+│   └── Views/          # SettingsView, KeyConfigurationView,
+│                       # RGBSettingsView, MenuBarView
+Tests/
+└── NexMacroTests/      # Protocol and model tests
+```
 
 ### File Locations
 - Config: `~/Library/Application Support/NexMacro/`
-- Logs: `~/Library/Logs/NexMacro/` (optional)
+- Device configs: `configs/{deviceId}/`
+
+### Protocol Reference
+| Command | Format | Description |
+|---------|--------|-------------|
+| Query Version | `ebf05` | Get firmware version |
+| Query Type | `ebf0e` | Get device type |
+| Query ID | `ebf0f` | Get device ID |
+| Change Profile | `ebf09N` | Switch to profile N (1-5) |
+| RGB Color | `ebf01RRGGBB100` | Set RGB color (hex) |
+| RGB Mode | `ebf0jN` | Set lighting mode (0-8) |
+| PC Stats | `pcs{len}{json}` | Send system stats |
 
 ---
 
-## Priority Order
+## Completed Milestones
 
-1. **Phase 1.1-1.2** - Basic actions working (keyboard, media, text)
-2. **Phase 2** - Persistence so configs survive restart
-3. **Phase 3.1** - UI to configure keys
-4. **Phase 1.3** - Remaining action types
-5. **Phase 3.2-3.3** - Profile and RGB UI
-6. **Phase 4** - Polish features
+- **2024-01-10**: Initial protocol analysis from C# decompilation
+- **2024-01-11**: GitHub repo setup with CI/CD
+- **2024-01-11**: Added 37 unit tests for protocol and models
+- **2024-01-11**: Fixed Settings window focus with AppDelegate pattern
 
 ---
 
-## References
+## Dependencies
 
-- Windows C# source: `/nexmacro/decompiled/`
-- Protocol docs: `NexProtocol.swift`
-- Device models: `Device.swift`
+- [ORSSerialPort](https://github.com/armadsen/ORSSerialPort) - Serial port communication
+- macOS 14.0+ (Sonoma) - SwiftUI MenuBarExtra, modern APIs
