@@ -29,9 +29,12 @@ final class AppProfileSwitcher {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            guard let self = self else { return }
+            guard let self = self,
+                  let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
+                return
+            }
             Task { @MainActor in
-                self.handleAppActivation(notification)
+                self.switchProfileForApp(app)
             }
         }
 
@@ -73,13 +76,6 @@ final class AppProfileSwitcher {
     }
 
     // MARK: - Private
-
-    private func handleAppActivation(_ notification: Notification) {
-        guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else {
-            return
-        }
-        switchProfileForApp(app)
-    }
 
     private func switchProfileForApp(_ app: NSRunningApplication) {
         guard let bundleId = app.bundleIdentifier else { return }

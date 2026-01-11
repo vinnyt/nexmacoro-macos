@@ -222,8 +222,8 @@ extension SerialPortService: ORSSerialPortDelegate {
 
 extension SerialPortService {
     /// Start observing port additions/removals
-    func startObservingPorts(onAdd: @escaping (ORSSerialPort) -> Void,
-                             onRemove: @escaping (ORSSerialPort) -> Void) {
+    func startObservingPorts(onAdd: @escaping @Sendable (ORSSerialPort) -> Void,
+                             onRemove: @escaping @Sendable (ORSSerialPort) -> Void) {
         NotificationCenter.default.addObserver(
             forName: .ORSSerialPortsWereConnected,
             object: nil,

@@ -93,8 +93,9 @@ final class DeviceManager {
                 await self?.autoConnect()
             }
         } onRemove: { [weak self] port in
+            let portPath = port.path
             Task { @MainActor [weak self] in
-                if self?.connectedDevice?.portPath == port.path {
+                if self?.connectedDevice?.portPath == portPath {
                     self?.handleDisconnection()
                 }
                 self?.scanForDevices()
