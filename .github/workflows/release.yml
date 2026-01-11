@@ -74,6 +74,9 @@ jobs:
           # Create PkgInfo
           echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
 
+          # Copy app icon
+          cp Sources/Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/"
+
           # Zip the app bundle
           zip -r "NexMacro-${GITHUB_REF_NAME}-macos.zip" "${APP_BUNDLE}"
 
