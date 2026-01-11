@@ -121,5 +121,4 @@ MIT License
 
 ## Acknowledgments
 
-- 
 - Built with assistance from Claude (Anthropic)
