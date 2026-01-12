@@ -198,8 +198,8 @@ jobs:
         env:
           SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
-          # Zip the notarized app bundle
-          zip -r "NexMacro-${GITHUB_REF_NAME}-macos.zip" "${APP_BUNDLE}"
+          # Zip the notarized app bundle (use ditto to preserve code signatures)
+          ditto -c -k --keepParent "${APP_BUNDLE}" "NexMacro-${GITHUB_REF_NAME}-macos.zip"
 
           # Sign the update for Sparkle
           if [ -n "$SPARKLE_KEY" ]; then
