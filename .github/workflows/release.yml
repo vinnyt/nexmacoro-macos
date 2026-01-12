@@ -23,12 +23,37 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Import Code Signing Certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/certificate.p12
+          security import /tmp/certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          rm /tmp/certificate.p12
+
+          # Set keychain for code signing
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+
       - name: Build Release
         run: swift build -c release
 
       - name: Create App Bundle
         env:
           SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           # Create app bundle structure
           APP_NAME="NexMacro"
@@ -51,47 +76,47 @@ jobs:
 
           # Create Info.plist with Sparkle configuration
           cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>CFBundleDevelopmentRegion</key>
-              <string>en</string>
-              <key>CFBundleExecutable</key>
-              <string>NexMacro</string>
-              <key>CFBundleIconFile</key>
-              <string>AppIcon</string>
-              <key>CFBundleIdentifier</key>
-              <string>com.nexmacro.macos</string>
-              <key>CFBundleInfoDictionaryVersion</key>
-              <string>6.0</string>
-              <key>CFBundleName</key>
-              <string>NexMacro</string>
-              <key>CFBundlePackageType</key>
-              <string>APPL</string>
-              <key>CFBundleShortVersionString</key>
-              <string>${VERSION}</string>
-              <key>CFBundleVersion</key>
-              <string>${VERSION}</string>
-              <key>LSApplicationCategoryType</key>
-              <string>public.app-category.utilities</string>
-              <key>LSMinimumSystemVersion</key>
-              <string>14.0</string>
-              <key>LSUIElement</key>
-              <true/>
-              <key>NSHighResolutionCapable</key>
-              <true/>
-              <key>NSPrincipalClass</key>
-              <string>NSApplication</string>
-              <key>SUPublicEDKey</key>
-              <string>jpvbEcpeQ+OG1AWL2w4ZOiVVcPo2ShTakmIkmwOQD/Y=</string>
-              <key>SUFeedURL</key>
-              <string>https://raw.githubusercontent.com/${{ github.repository }}/main/appcast.xml</string>
-              <key>SUEnableAutomaticChecks</key>
-              <true/>
-          </dict>
-          </plist>
-          EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>NexMacro</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.nexmacro.macos</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>NexMacro</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${VERSION}</string>
+    <key>CFBundleVersion</key>
+    <string>${VERSION}</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+    <key>SUPublicEDKey</key>
+    <string>jpvbEcpeQ+OG1AWL2w4ZOiVVcPo2ShTakmIkmwOQD/Y=</string>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/${{ github.repository }}/main/appcast.xml</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+</dict>
+</plist>
+EOF
 
           # Create PkgInfo
           echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
@@ -99,20 +124,83 @@ jobs:
           # Copy app icon
           cp Sources/Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/"
 
-          # Ad-hoc sign the app (prevents "damaged app" error)
-          codesign --force --deep -s - "${APP_BUNDLE}"
+          echo "APP_BUNDLE=${APP_BUNDLE}" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-          # Zip the app bundle
+      - name: Code Sign App
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Sign Sparkle framework first
+          codesign --force --options runtime --timestamp \
+            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
+
+          codesign --force --options runtime --timestamp \
+            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc"
+
+          codesign --force --options runtime --timestamp \
+            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
+
+          codesign --force --options runtime --timestamp \
+            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
+
+          codesign --force --options runtime --timestamp \
+            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework"
+
+          # Sign the main app
+          codesign --force --options runtime --timestamp \
+            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            "${APP_BUNDLE}"
+
+          # Verify signature
+          codesign --verify --deep --strict "${APP_BUNDLE}"
+          echo "Code signing complete"
+
+      - name: Notarize App
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Create zip for notarization
+          ditto -c -k --keepParent "${APP_BUNDLE}" "NexMacro-notarize.zip"
+
+          # Submit for notarization
+          echo "Submitting for notarization..."
+          xcrun notarytool submit "NexMacro-notarize.zip" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --wait
+
+          # Staple the notarization ticket
+          echo "Stapling notarization ticket..."
+          xcrun stapler staple "${APP_BUNDLE}"
+
+          # Verify notarization
+          xcrun stapler validate "${APP_BUNDLE}"
+          spctl --assess --type execute --verbose "${APP_BUNDLE}"
+
+          echo "Notarization complete"
+          rm "NexMacro-notarize.zip"
+
+      - name: Create Distribution Zip
+        env:
+          SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # Zip the notarized app bundle
           zip -r "NexMacro-${GITHUB_REF_NAME}-macos.zip" "${APP_BUNDLE}"
 
-          # Sign the update if we have the key
+          # Sign the update for Sparkle
           if [ -n "$SPARKLE_KEY" ]; then
             echo "$SPARKLE_KEY" > /tmp/sparkle_key
-            # sign_update outputs: sparkle:edSignature="..." length="..."
-            # Extract just the signature value
             FULL_OUTPUT=$(.build/artifacts/sparkle/Sparkle/bin/sign_update "NexMacro-${GITHUB_REF_NAME}-macos.zip" -f /tmp/sparkle_key)
             rm /tmp/sparkle_key
-            # Parse out just the signature (between first pair of quotes)
             SIGNATURE=$(echo "$FULL_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
             echo "SPARKLE_SIGNATURE=${SIGNATURE}" >> $GITHUB_ENV
             echo "Signed with EdDSA: ${SIGNATURE:0:20}..."
@@ -129,27 +217,27 @@ jobs:
           DATE=$(date -R)
 
           cat > appcast.xml << EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
-            <channel>
-              <title>NexMacro Updates</title>
-              <link>https://github.com/${{ github.repository }}</link>
-              <description>Most recent changes with links to updates.</description>
-              <language>en</language>
-              <item>
-                <title>Version ${VERSION}</title>
-                <pubDate>${DATE}</pubDate>
-                <sparkle:version>${VERSION}</sparkle:version>
-                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
-                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-                <enclosure url="${DOWNLOAD_URL}"
-                           type="application/octet-stream"
-                           sparkle:edSignature="${SPARKLE_SIGNATURE}"
-                           length="${FILESIZE}" />
-              </item>
-            </channel>
-          </rss>
-          EOF
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>NexMacro Updates</title>
+    <link>https://github.com/${{ github.repository }}</link>
+    <description>Most recent changes with links to updates.</description>
+    <language>en</language>
+    <item>
+      <title>Version ${VERSION}</title>
+      <pubDate>${DATE}</pubDate>
+      <sparkle:version>${VERSION}</sparkle:version>
+      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure url="${DOWNLOAD_URL}"
+                 type="application/octet-stream"
+                 sparkle:edSignature="${SPARKLE_SIGNATURE}"
+                 length="${FILESIZE}" />
+    </item>
+  </channel>
+</rss>
+EOF
 
           echo "Generated appcast.xml"
           cat appcast.xml
@@ -167,6 +255,13 @@ jobs:
           git commit -m "Update appcast.xml for ${GITHUB_REF_NAME}" || echo "No changes to commit"
           git push origin main || echo "Could not push appcast update"
 
+      - name: Cleanup Keychain
+        if: always()
+        run: |
+          if [ -n "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -181,22 +276,21 @@ jobs:
             1. Download `NexMacro-${{ github.ref_name }}-macos.zip`
             2. Extract the zip file
             3. Move `NexMacro.app` to your Applications folder
-            4. **First launch:** Right-click the app → Open → Open (to bypass Gatekeeper)
+            4. Double-click to launch (no Gatekeeper warning - app is notarized!)
             5. Grant Accessibility permissions when prompted (for keyboard/mouse simulation)
 
             ## Auto-Updates
 
             This version includes automatic update checking via Sparkle.
-            Use "Check for Updates" from the menu to manually check.
+            Use "Check for Updates" in Settings to manually check.
 
             ## Requirements
 
             - macOS 14.0 (Sonoma) or later
             - NexMacro device connected via USB
 
-            ## Note
+            ## Signed & Notarized
 
-            This is an unsigned build. macOS will show a warning on first launch.
-            Right-click → Open to bypass the warning.
+            This app is signed with a Developer ID certificate and notarized by Apple.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
