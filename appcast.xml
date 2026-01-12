@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>NexMacro Updates</title>
+    <link>https://github.com/vinnyt/nexmacoro-macos</link>
+    <description>Most recent changes with links to updates.</description>
+    <language>en</language>
+    <item>
+      <title>Version 1.0.1</title>
+      <pubDate>Mon, 12 Jan 2026 16:03:59 +0000</pubDate>
+      <sparkle:version>1.0.1</sparkle:version>
+      <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/vinnyt/nexmacoro-macos/releases/download/v1.0.1/NexMacro-v1.0.1-macos.zip"
+                 type="application/octet-stream"
+                 sparkle:edSignature="sparkle:edSignature="Z2chEktL87GFIo/JKCW+gRYk4HHDznnHxrZTD7g4JFu62/lwTyWkqXKbLDDcRHEXx4KsBnJvJdI8lLbEuEbsAg==" length="4308357""
+                 length="4308357" />
+    </item>
+  </channel>
+</rss>
