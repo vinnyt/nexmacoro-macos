@@ -42,10 +42,9 @@ jobs:
           # Copy executable
           cp .build/release/NexMacro "${APP_BUNDLE}/Contents/MacOS/"
 
-          # Copy Sparkle framework
-          cp -R .build/artifacts/sparkle/Sparkle/Sparkle.framework "${APP_BUNDLE}/Contents/Frameworks/"
-          cp -R .build/artifacts/sparkle/Sparkle/Sparkle.framework/Versions/B/Autoupdate "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/" 2>/dev/null || true
-          cp -R .build/artifacts/sparkle/Sparkle/Sparkle.framework/Versions/B/Updater.app "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/" 2>/dev/null || true
+          # Copy Sparkle framework from xcframework
+          SPARKLE_FW=".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+          cp -R "${SPARKLE_FW}" "${APP_BUNDLE}/Contents/Frameworks/"
 
           # Create Info.plist with Sparkle configuration
           cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
