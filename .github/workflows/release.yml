@@ -96,6 +96,9 @@ jobs:
           # Copy app icon
           cp Sources/Resources/AppIcon.icns "${APP_BUNDLE}/Contents/Resources/"
 
+          # Ad-hoc sign the app (prevents "damaged app" error)
+          codesign --force --deep -s - "${APP_BUNDLE}"
+
           # Zip the app bundle
           zip -r "NexMacro-${GITHUB_REF_NAME}-macos.zip" "${APP_BUNDLE}"
 
