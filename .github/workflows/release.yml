@@ -46,6 +46,9 @@ jobs:
           SPARKLE_FW=".build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
           cp -R "${SPARKLE_FW}" "${APP_BUNDLE}/Contents/Frameworks/"
 
+          # Fix rpath so the executable can find Sparkle.framework
+          install_name_tool -add_rpath "@executable_path/../Frameworks" "${APP_BUNDLE}/Contents/MacOS/NexMacro"
+
           # Create Info.plist with Sparkle configuration
           cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
           <?xml version="1.0" encoding="UTF-8"?>
