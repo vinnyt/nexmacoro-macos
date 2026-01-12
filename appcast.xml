@@ -6,15 +6,15 @@
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
     <item>
-      <title>Version 1.0.2</title>
-      <pubDate>Mon, 12 Jan 2026 16:43:06 +0000</pubDate>
-      <sparkle:version>1.0.2</sparkle:version>
-      <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
+      <title>Version 1.0.3</title>
+      <pubDate>Mon, 12 Jan 2026 16:50:41 +0000</pubDate>
+      <sparkle:version>1.0.3</sparkle:version>
+      <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/vinnyt/nexmacoro-macos/releases/download/v1.0.2/NexMacro-v1.0.2-macos.zip"
+      <enclosure url="https://github.com/vinnyt/nexmacoro-macos/releases/download/v1.0.3/NexMacro-v1.0.3-macos.zip"
                  type="application/octet-stream"
-                 sparkle:edSignature="sparkle:edSignature="gTOaNFukGacPvKUPcvE9v0ccfmprTPVU+4WkDnxAQf/GjFOmeM7MvUbmx58yuaQdGxRsCc7Vgv0I0YksbahhCA==" length="4307772""
-                 length="4307772" />
+                 sparkle:edSignature="sparkle:edSignature="Hk5bTlOKqU6rVoNVffkSSpu6w2uxIRgj0CVdjCkdwYPvfLY/AAT3vzqJXT3WZujFs84+UaYaegow9rQqBiF1Bg==" length="4307805""
+                 length="4307805" />
     </item>
   </channel>
 </rss>
