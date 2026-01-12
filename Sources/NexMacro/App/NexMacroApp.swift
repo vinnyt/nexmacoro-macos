@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import Sparkle
 
 /// NexMacro - macOS Menu Bar App for Macro Keypad Configuration
 @main
@@ -37,9 +38,16 @@ struct NexMacroApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
     static var shared: AppDelegate?
     var settingsWindow: NSWindow?
+    var updaterController: SPUStandardUpdaterController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         AppDelegate.shared = self
+        // Initialize Sparkle updater
+        updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+    }
+
+    func checkForUpdates() {
+        updaterController?.checkForUpdates(nil)
     }
 
     func openSettings() {
@@ -250,6 +258,14 @@ struct MenuBarView: View {
             HStack {
                 Button("Settings...") {
                     AppDelegate.shared?.openSettings()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button("Check for Updates") {
+                    AppDelegate.shared?.checkForUpdates()
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)

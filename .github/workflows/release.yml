@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -25,19 +27,28 @@ jobs:
         run: swift build -c release
 
       - name: Create App Bundle
+        env:
+          SPARKLE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           # Create app bundle structure
           APP_NAME="NexMacro"
           APP_BUNDLE="${APP_NAME}.app"
+          VERSION="${GITHUB_REF_NAME#v}"
 
           mkdir -p "${APP_BUNDLE}/Contents/MacOS"
           mkdir -p "${APP_BUNDLE}/Contents/Resources"
+          mkdir -p "${APP_BUNDLE}/Contents/Frameworks"
 
           # Copy executable
           cp .build/release/NexMacro "${APP_BUNDLE}/Contents/MacOS/"
 
-          # Create Info.plist
-          cat > "${APP_BUNDLE}/Contents/Info.plist" << 'PLIST'
+          # Copy Sparkle framework
+          cp -R .build/artifacts/sparkle/Sparkle/Sparkle.framework "${APP_BUNDLE}/Contents/Frameworks/"
+          cp -R .build/artifacts/sparkle/Sparkle/Sparkle.framework/Versions/B/Autoupdate "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/" 2>/dev/null || true
+          cp -R .build/artifacts/sparkle/Sparkle/Sparkle.framework/Versions/B/Updater.app "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/" 2>/dev/null || true
+
+          # Create Info.plist with Sparkle configuration
+          cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -57,9 +68,9 @@ jobs:
               <key>CFBundlePackageType</key>
               <string>APPL</string>
               <key>CFBundleShortVersionString</key>
-              <string>1.0.0</string>
+              <string>${VERSION}</string>
               <key>CFBundleVersion</key>
-              <string>1</string>
+              <string>${VERSION}</string>
               <key>LSApplicationCategoryType</key>
               <string>public.app-category.utilities</string>
               <key>LSMinimumSystemVersion</key>
@@ -70,9 +81,15 @@ jobs:
               <true/>
               <key>NSPrincipalClass</key>
               <string>NSApplication</string>
+              <key>SUPublicEDKey</key>
+              <string>jpvbEcpeQ+OG1AWL2w4ZOiVVcPo2ShTakmIkmwOQD/Y=</string>
+              <key>SUFeedURL</key>
+              <string>https://raw.githubusercontent.com/${{ github.repository }}/main/appcast.xml</string>
+              <key>SUEnableAutomaticChecks</key>
+              <true/>
           </dict>
           </plist>
-          PLIST
+          EOF
 
           # Create PkgInfo
           echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
@@ -83,10 +100,69 @@ jobs:
           # Zip the app bundle
           zip -r "NexMacro-${GITHUB_REF_NAME}-macos.zip" "${APP_BUNDLE}"
 
+          # Sign the update if we have the key
+          if [ -n "$SPARKLE_KEY" ]; then
+            echo "$SPARKLE_KEY" > /tmp/sparkle_key
+            SIGNATURE=$(.build/artifacts/sparkle/Sparkle/bin/sign_update "NexMacro-${GITHUB_REF_NAME}-macos.zip" -f /tmp/sparkle_key)
+            rm /tmp/sparkle_key
+            echo "SPARKLE_SIGNATURE=${SIGNATURE}" >> $GITHUB_ENV
+            echo "Signed with EdDSA"
+          else
+            echo "No signing key provided, skipping signature"
+          fi
+
+      - name: Generate Appcast
+        if: env.SPARKLE_SIGNATURE != ''
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          FILESIZE=$(stat -f%z "NexMacro-${GITHUB_REF_NAME}-macos.zip")
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/NexMacro-${GITHUB_REF_NAME}-macos.zip"
+          DATE=$(date -R)
+
+          cat > appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>NexMacro Updates</title>
+              <link>https://github.com/${{ github.repository }}</link>
+              <description>Most recent changes with links to updates.</description>
+              <language>en</language>
+              <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${DATE}</pubDate>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                <enclosure url="${DOWNLOAD_URL}"
+                           type="application/octet-stream"
+                           sparkle:edSignature="${SPARKLE_SIGNATURE}"
+                           length="${FILESIZE}" />
+              </item>
+            </channel>
+          </rss>
+          EOF
+
+          echo "Generated appcast.xml"
+          cat appcast.xml
+
+      - name: Update Appcast in Repo
+        if: env.SPARKLE_SIGNATURE != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git pull origin main
+          mv appcast.xml appcast.xml.new
+          mv appcast.xml.new appcast.xml
+          git add appcast.xml
+          git commit -m "Update appcast.xml for ${GITHUB_REF_NAME}" || echo "No changes to commit"
+          git push origin main || echo "Could not push appcast update"
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: NexMacro-*.zip
+          files: |
+            NexMacro-*.zip
           draft: false
           prerelease: false
           generate_release_notes: true
@@ -98,6 +174,11 @@ jobs:
             3. Move `NexMacro.app` to your Applications folder
             4. **First launch:** Right-click the app → Open → Open (to bypass Gatekeeper)
             5. Grant Accessibility permissions when prompted (for keyboard/mouse simulation)
+
+            ## Auto-Updates
+
+            This version includes automatic update checking via Sparkle.
+            Use "Check for Updates" from the menu to manually check.
 
             ## Requirements
 

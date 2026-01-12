@@ -13,7 +13,9 @@ let package = Package(
     ],
     dependencies: [
         // ORSSerialPort for serial communication
-        .package(url: "https://github.com/armadsen/ORSSerialPort.git", from: "2.1.0")
+        .package(url: "https://github.com/armadsen/ORSSerialPort.git", from: "2.1.0"),
+        // Sparkle for auto-updates
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.5.0")
     ],
     targets: [
         // C library target for hardware monitoring
@@ -37,7 +39,8 @@ let package = Package(
             name: "NexMacro",
             dependencies: [
                 "CPcStats",
-                .product(name: "ORSSerial", package: "ORSSerialPort")
+                .product(name: "ORSSerial", package: "ORSSerialPort"),
+                .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/NexMacro",
             resources: [
