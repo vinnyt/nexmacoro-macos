@@ -75,48 +75,52 @@ jobs:
           install_name_tool -add_rpath "@executable_path/../Frameworks" "${APP_BUNDLE}/Contents/MacOS/NexMacro"
 
           # Create Info.plist with Sparkle configuration
-          cat > "${APP_BUNDLE}/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleExecutable</key>
-    <string>NexMacro</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.nexmacro.macos</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>NexMacro</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>${VERSION}</string>
-    <key>CFBundleVersion</key>
-    <string>${VERSION}</string>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.utilities</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSPrincipalClass</key>
-    <string>NSApplication</string>
-    <key>SUPublicEDKey</key>
-    <string>jpvbEcpeQ+OG1AWL2w4ZOiVVcPo2ShTakmIkmwOQD/Y=</string>
-    <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/${{ github.repository }}/main/appcast.xml</string>
-    <key>SUEnableAutomaticChecks</key>
-    <true/>
-</dict>
-</plist>
-EOF
+          cat > "${APP_BUNDLE}/Contents/Info.plist" << 'PLIST_EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleDevelopmentRegion</key>
+              <string>en</string>
+              <key>CFBundleExecutable</key>
+              <string>NexMacro</string>
+              <key>CFBundleIconFile</key>
+              <string>AppIcon</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.nexmacro.macos</string>
+              <key>CFBundleInfoDictionaryVersion</key>
+              <string>6.0</string>
+              <key>CFBundleName</key>
+              <string>NexMacro</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>CFBundleShortVersionString</key>
+              <string>VERSIONPLACEHOLDER</string>
+              <key>CFBundleVersion</key>
+              <string>VERSIONPLACEHOLDER</string>
+              <key>LSApplicationCategoryType</key>
+              <string>public.app-category.utilities</string>
+              <key>LSMinimumSystemVersion</key>
+              <string>14.0</string>
+              <key>LSUIElement</key>
+              <true/>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>NSPrincipalClass</key>
+              <string>NSApplication</string>
+              <key>SUPublicEDKey</key>
+              <string>jpvbEcpeQ+OG1AWL2w4ZOiVVcPo2ShTakmIkmwOQD/Y=</string>
+              <key>SUFeedURL</key>
+              <string>FEEDURLPLACEHOLDER</string>
+              <key>SUEnableAutomaticChecks</key>
+              <true/>
+          </dict>
+          </plist>
+          PLIST_EOF
+
+          # Replace placeholders
+          sed -i '' "s/VERSIONPLACEHOLDER/${VERSION}/g" "${APP_BUNDLE}/Contents/Info.plist"
+          sed -i '' "s|FEEDURLPLACEHOLDER|https://raw.githubusercontent.com/${{ github.repository }}/main/appcast.xml|g" "${APP_BUNDLE}/Contents/Info.plist"
 
           # Create PkgInfo
           echo -n "APPL????" > "${APP_BUNDLE}/Contents/PkgInfo"
@@ -216,28 +220,28 @@ EOF
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/NexMacro-${GITHUB_REF_NAME}-macos.zip"
           DATE=$(date -R)
 
-          cat > appcast.xml << EOF
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <channel>
-    <title>NexMacro Updates</title>
-    <link>https://github.com/${{ github.repository }}</link>
-    <description>Most recent changes with links to updates.</description>
-    <language>en</language>
-    <item>
-      <title>Version ${VERSION}</title>
-      <pubDate>${DATE}</pubDate>
-      <sparkle:version>${VERSION}</sparkle:version>
-      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <enclosure url="${DOWNLOAD_URL}"
-                 type="application/octet-stream"
-                 sparkle:edSignature="${SPARKLE_SIGNATURE}"
-                 length="${FILESIZE}" />
-    </item>
-  </channel>
-</rss>
-EOF
+          cat > appcast.xml << APPCAST_EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>NexMacro Updates</title>
+              <link>https://github.com/${{ github.repository }}</link>
+              <description>Most recent changes with links to updates.</description>
+              <language>en</language>
+              <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${DATE}</pubDate>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                <enclosure url="${DOWNLOAD_URL}"
+                           type="application/octet-stream"
+                           sparkle:edSignature="${SPARKLE_SIGNATURE}"
+                           length="${FILESIZE}" />
+              </item>
+            </channel>
+          </rss>
+          APPCAST_EOF
 
           echo "Generated appcast.xml"
           cat appcast.xml
