@@ -134,31 +134,32 @@ jobs:
       - name: Code Sign App
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_DEVELOPER_NAME: ${{ secrets.APPLE_DEVELOPER_NAME }}
         run: |
           # Sign Sparkle framework first
           codesign --force --options runtime --timestamp \
-            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            -s "Developer ID Application: $APPLE_DEVELOPER_NAME ($APPLE_TEAM_ID)" \
             "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc"
 
           codesign --force --options runtime --timestamp \
-            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            -s "Developer ID Application: $APPLE_DEVELOPER_NAME ($APPLE_TEAM_ID)" \
             "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc"
 
           codesign --force --options runtime --timestamp \
-            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            -s "Developer ID Application: $APPLE_DEVELOPER_NAME ($APPLE_TEAM_ID)" \
             "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate"
 
           codesign --force --options runtime --timestamp \
-            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            -s "Developer ID Application: $APPLE_DEVELOPER_NAME ($APPLE_TEAM_ID)" \
             "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app"
 
           codesign --force --options runtime --timestamp \
-            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            -s "Developer ID Application: $APPLE_DEVELOPER_NAME ($APPLE_TEAM_ID)" \
             "${APP_BUNDLE}/Contents/Frameworks/Sparkle.framework"
 
           # Sign the main app
           codesign --force --options runtime --timestamp \
-            -s "Developer ID Application: ***REMOVED*** ($APPLE_TEAM_ID)" \
+            -s "Developer ID Application: $APPLE_DEVELOPER_NAME ($APPLE_TEAM_ID)" \
             "${APP_BUNDLE}"
 
           # Verify signature
