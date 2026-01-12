@@ -504,7 +504,10 @@ struct GeneralSettingsView: View {
 
             Section("About") {
                 LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Unknown")
-                Link("GitHub", destination: URL(string: "https://github.com")!)
+                Button("Check for Updates...") {
+                    AppDelegate.shared?.checkForUpdates()
+                }
+                Link("GitHub", destination: URL(string: "https://github.com/vinnyt/nexmacoro-macos")!)
             }
         }
         .formStyle(.grouped)
